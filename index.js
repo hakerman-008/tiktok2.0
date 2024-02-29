@@ -1,7 +1,7 @@
 const express = require('express');
-const axios = require('axios');
+const puppeteer = require('puppeteer');
 const app = express();
-const port = 3000; 
+const port = 3000;
 
 app.use(express.json());
 
@@ -10,18 +10,21 @@ app.get('/tiktok', async (req, res) => {
     const query = req.query.query;
     const apiKey = 'vrGjIdJL';
 
-    const apiUrl = `https://api.betabotz.eu.org/api/search/tiktoks?query=${query}&apikey=${apiKey}`;
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
 
-    // Set appropriate headers including User-Agent
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-      'Accept': 'application/json', // Add more headers if required
-    };
+    // Navigate to the target page
+    await page.goto(`https://api.betabotz.eu.org/api/search/tiktoks?query=${query}&apikey=${apiKey}`);
 
-    const response = await axios.get(apiUrl, { headers });
+    // Extract data from the page
+    const data = await page.evaluate(() => {
+      return JSON.parse(document.querySelector('pre').textContent);
+    });
 
-    if (response.data.status && response.data.result.data.length > 0) {
-      const playUrls = response.data.result.data.map(video => video.play);
+    await browser.close();
+
+    if (data.status && data.result && data.result.data.length > 0) {
+      const playUrls = data.result.data.map(video => video.play);
       res.json({ urls: playUrls });
     } else {
       res.status(404).json({ error: 'No TikTok videos found for the provided query' });
